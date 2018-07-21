@@ -1,0 +1,149 @@
+Communicating Sequential Processes
+for the working programmer
+21 jul 2018
+
+Madhukar Mishra
+Software Engineer, Grofers
+madhukar.mishra@grofers.com
+
+* Concurrency
+
+- occurring or existing simultaneously or side by side:
+
+- acting in conjunction; cooperating:
+
+(http://www.dictionary.com/browse/concurrent)
+
+
+* Why
+
+- approaching the physical limits of Moore's Law, processors not getting faster.
+- Way forward is to have MORE processors, not faster processors.
+- Ahmdal's Law says that gains are bounded by how much of the program has to run in a sequential manner. (The more you can can parallelize, the faster you can go)
+- Allows for scaling 'horizontally'
+- Explains the sudden surge of interest in Erlang, Scala, Clojure and FP
+
+(The free lunch is over: http://www.gotw.ca/publications/concurrency-ddj.htm)
+
+: moore's law says that the number of transistors on an IC doubles every two years, which directly correlates with processor speed
+: corresponds to scaling the system vertically, i.e increasing the throughput of a system
+: on the other hand scaling horizontally means adding more instances of the same system to increase throughput
+: these are the languages which offer better constructs for concurrency.
+
+* BUT
+
+Concurrency is not parallelism
+
+concurrency: Dealing with a lot at once, property of the solution (code)
+parallelism: Doing a lot at once, property of the runtime
+
+: you're drinking coffee and typing in some code, are you doing them together - no ? this is concurrent but not parallel.
+: If you're writing some code, while your colleague is drinking coffee, then these two things are parallel.
+: the first situation is kind of like multithreading in Cpython on a single core
+: while in the second is having two different processes running on different cores on your OS.
+
+(concurrency is not parallelism: https://www.youtube.com/watch?v=cN_DpYBzKso)
+
+* Concurrency is hard
+
+- hard to reason about !
+- You can have data races, deal with atomicity, synchronize memory access ?!
+- You can have deadlocks, livelocks, starvation !?!?
+- Worry about 'thread safety' !??!!
+- primitives provided by languages - semaphore, mutexes, locks, monitors ?!?!?!
+
+: remember to lock and unlock
+: problem is non-determinism, execution order is dependent on scheduling
+: difficult to reproduce - come up with environment change, impossible to debug
+: need something simple abstract composable
+
+* CSP here to save the day
+
+CSP is a formal description of real time behaviour of sytems.
+
+: time to do the math, break out your pen and notepad, we're going to learn the theoretical underpinnings of Go
+so, time to learn process algebra, and all this notation
+
+- process!input
+- process?output (output)
+- ⍺ Process = {event1, event2}
+- x -> P (x then P)
+- μ (recursion)
+- | (choice)
+- || (concurrence)
+
+* Kidding :P
+
+The formal method has its usefulness in specifying and verifying concurrent solutions to problems,
+so that it is appropriate for safety critical systems.
+
+but this is CSP for working programmers
+
+: some of you look disappointed
+: it's good to know that there's a method to the madness.
+: but we won't get into it, this is CSP for the working programmer, not computer science students.
+
+
+* features
+
+CSP gives us a higher level programming model for concurrency than languages used to offer.
+: easier to reason about than conc primitives, gives a more natural way to think about
+
+- sequential imperitive processes execute concurrently and communicate by synchronized input and output.
+- Processes must have "disjoint local state"
+- processes interact solely by message passing
+- use guarded commands to compose concurrent processes
+
+: so we have
+: message input is synchronous
+: procedural blocks of code (ordered sequence of operations) that pass messages to each other
+: We don't share memory - so no locking on a variable - solves a whole host of problems
+: all memory of a process is local to a process, so one process can't mutate other process's data
+: when a process passes over a value to another process, it loses control of it
+: Guarded commands introduce choice and non-determinism
+: A guarded statement is basically a condition followed by a statement, the statement gets executed
+if the condition is true - this represents choice
+: If more than on condition is held true, any of them is executed - introducing non determinism.
+
+
+* Seem familiar ?
+
+Unix Pipes
+
+`tail -f server.log | grep "error"`
+
+- message passing
+- concurrent
+- composable
+
+: the process on the left of the pipe writes to the input of the process to the right of the file
+: they both run together, in the example we can assume server.log is being continuously written to
+: grep would match the lines with the text error and write them to the display in real time
+: they're easily composable, you don't need to know the internals of either process to be able to
+: compose them meaningfully.
+: In go's context, unix processes are like goroutines and pipes are like channels.
+: pipes work on text, or bytes where channels can take any go datastructure
+
+* Go
+
+Go's concurrency is based on CSP
+
+- goroutines (process)
+- channels (input/output)
+- select (guarded statements)
+
+: Goroutines talk to each other over channels
+: The problem is that in go unlike CSP you can, pass references and violate
+the principle of disjoint state, if you do it, it's on you.
+: the select block allows us to wait on multiple channels
+
+* Producer consumer problem
+
+.play producer_consumer/producer_consumer.go
+
+* Comparison with actor model
+
+- CSP processes are anonymous, while actors have identities
+- in CSP sender cannot transmit, till receiver is ready, whereas actors write async
+- CSP uses named channels, actors used named destinations
+- CSP makes more sense in a single program context, actors model distributed systems better.
